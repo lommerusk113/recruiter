@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.3
+// @version      0.1.4
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -217,8 +217,9 @@
         #recruiter-panel .recruiter-toggle { display: block; margin-top: 4px; cursor: pointer; }
         #recruiter-panel .recruiter-status { margin-top: 4px; color: #9c9; }
         #recruiter-panel .recruiter-usage { margin-top: 4px; color: #99c; cursor: pointer; text-decoration: underline; }
-        .recruiter-stats { margin-left: 6px; padding: 1px 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.55);
-            color: #7fd67f; font: 11px/1.5 Arial, sans-serif; white-space: nowrap; vertical-align: middle; display: inline-block; }
+        a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
+            font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
+        a.recruiter-stats:hover { text-decoration: underline; }
         /* plain names: hide the honor-bar graphic, render the name via ::after; the wrap stays in the layout */
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] { background: none !important; width: auto !important; min-width: 0 !important; height: auto !important; }
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] > * { display: none !important; }
@@ -382,24 +383,39 @@
         }
         running = false;
     }
-    /** Inserts a "hours | xan/day | streak" cell right after the target element and fills it from the API. */
+    /**
+     * Inserts a "hours · xan/day · streak" cell and fills it from the API.
+     * The cell is a link to the user's profile. On the classic user list it goes on the
+     * game's own Level/Status line (.level-icons-wrap) so it reads as native; elsewhere
+     * it sits right after the name link.
+     */
     function attachStats(target, userId) {
-        const span = document.createElement('span');
-        span.className = 'recruiter-stats';
+        const cell = document.createElement('a');
+        cell.className = 'recruiter-stats';
+        cell.href = `/profiles.php?XID=${userId}`;
+        cell.title = 'hours played · xanax per day (last 30d) · activity streak — click for profile';
         const key = getApiKey();
-        span.textContent = key ? '…' : 'no API key';
-        target.insertAdjacentElement('afterend', span);
+        cell.textContent = key ? '…' : 'no API key';
+        const levelWrap = target.closest('li, tr')?.querySelector('.level-icons-wrap');
+        if (levelWrap) {
+            levelWrap.insertBefore(cell, levelWrap.firstChild);
+        }
+        else {
+            target.insertAdjacentElement('afterend', cell);
+        }
         if (!key) {
             return;
         }
         enqueue(async () => {
             try {
                 const s = await getUserStats(userId, key);
-                span.textContent = `${s.hoursPlayed}h · ${s.xanaxPerDay.toFixed(1)} xan/d · ${s.streak}d`;
-                span.title = 'hours played · xanax per day (last 30d / streak) · activity streak';
+                cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
+                    + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`
+                    + ` · <span class="bold">${s.streak}</span>d streak`;
             }
             catch (e) {
-                span.textContent = String(e);
+                cell.textContent = 'API error';
+                cell.title = String(e);
             }
         });
     }

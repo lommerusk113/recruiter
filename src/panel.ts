@@ -21,8 +21,9 @@ export function mountPanel(): void {
         #recruiter-panel .recruiter-toggle { display: block; margin-top: 4px; cursor: pointer; }
         #recruiter-panel .recruiter-status { margin-top: 4px; color: #9c9; }
         #recruiter-panel .recruiter-usage { margin-top: 4px; color: #99c; cursor: pointer; text-decoration: underline; }
-        .recruiter-stats { margin-left: 6px; padding: 1px 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.55);
-            color: #7fd67f; font: 11px/1.5 Arial, sans-serif; white-space: nowrap; vertical-align: middle; display: inline-block; }
+        a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
+            font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
+        a.recruiter-stats:hover { text-decoration: underline; }
         /* plain names: hide the honor-bar graphic, render the name via ::after; the wrap stays in the layout */
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] { background: none !important; width: auto !important; min-width: 0 !important; height: auto !important; }
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] > * { display: none !important; }
