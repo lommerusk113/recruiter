@@ -26,8 +26,9 @@ export function mountPanel(): void {
         a.recruiter-stats:hover { text-decoration: underline; }
         /* fixed-width column overlay on the user list's right edge; header and rows share widths */
         .users-list-title, .user-info-list-wrap > li { position: relative; }
-        .recruiter-cols { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: stretch;
-            white-space: nowrap; color: inherit; text-decoration: none; font-size: 12px; margin: 0; line-height: normal; }
+        .recruiter-cols, a.recruiter-stats.recruiter-cols { position: absolute; right: 0; top: 0; bottom: 0;
+            display: flex; align-items: stretch; white-space: nowrap; color: inherit; text-decoration: none;
+            font-size: 12px; margin: 0; line-height: normal; }
         .recruiter-cols > span { width: 66px; display: flex; align-items: center; justify-content: center; text-align: center; }
         a.recruiter-cols:hover { text-decoration: underline; }
         /* BSP overlays its badge on the honor-bar area; shift plain names clear of it */
