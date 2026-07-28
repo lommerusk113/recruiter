@@ -1,0 +1,13 @@
+// ==UserScript==
+// @name         Torn Recruiter
+// @namespace    torn-recruiter
+// @version      0.1.0
+// @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
+// @match        https://www.torn.com/page.php*
+// @match        https://www.torn.com/profiles.php*
+// @match        https://www.torn.com/userlist.php*
+// @match        https://www.torn.com/factions.php*
+// @run-at       document-start
+// @grant        none
+// @license      MIT
+// ==/UserScript==
