@@ -37,9 +37,12 @@ export function attachStats(target: HTMLElement, userId: number): void {
     const key = getApiKey();
     cell.textContent = key ? '…' : 'no API key';
 
-    const levelWrap = target.closest('li, tr')?.querySelector('.level-icons-wrap');
-    if (levelWrap) {
-        levelWrap.insertBefore(cell, levelWrap.firstChild);
+    // the name column (.expander) has spare room; adding to .level-icons-wrap breaks
+    // the game's fixed column widths and wraps rows onto two lines
+    const expander = target.closest('li, tr')?.querySelector('.expander');
+    if (expander) {
+        expander.appendChild(cell);
+        cell.classList.add('in-expander');
     } else {
         target.insertAdjacentElement('afterend', cell);
     }

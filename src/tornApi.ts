@@ -144,6 +144,10 @@ export async function getUserStats(userId: number, key: string): Promise<UserSta
         fetchStats(userId, key, monthAgo)
     ]);
 
+    if (now.timeplayed === undefined) {
+        console.warn('[recruiter] timeplayed missing from personalstats response', now);
+    }
+
     const streak = now.activestreak ?? 0;
     const stats: UserStats = {
         hoursPlayed: Math.round((now.timeplayed ?? 0) / 3600),

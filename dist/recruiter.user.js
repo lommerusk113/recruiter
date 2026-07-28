@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.5
+// @version      0.1.6
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -177,6 +177,9 @@
             fetchStats(userId, key),
             fetchStats(userId, key, monthAgo)
         ]);
+        if (now.timeplayed === undefined) {
+            console.warn('[recruiter] timeplayed missing from personalstats response', now);
+        }
         const streak = now.activestreak ?? 0;
         const stats = {
             hoursPlayed: Math.round((now.timeplayed ?? 0) / 3600),
@@ -223,6 +226,10 @@
         a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
             font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
         a.recruiter-stats:hover { text-decoration: underline; }
+        a.recruiter-stats.in-expander { float: right; margin-right: 28px; }
+        /* BSP overlays its badge on the honor-bar area; shift plain names clear of it */
+        .recruiter-plain-names .TDup_ColoredStatsInjectionDiv ~ a .honor-text-wrap[data-recruiter-name] {
+            display: inline-block; margin-left: 44px; }
         /* plain names: hide the honor-bar graphic, render the name via ::after; the wrap stays in the layout */
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] { background: none !important; width: auto !important; min-width: 0 !important; height: auto !important; }
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] > * { display: none !important; }
@@ -399,9 +406,12 @@
         cell.title = 'hours played · xanax per day (last 30d) · activity streak — click for profile';
         const key = getApiKey();
         cell.textContent = key ? '…' : 'no API key';
-        const levelWrap = target.closest('li, tr')?.querySelector('.level-icons-wrap');
-        if (levelWrap) {
-            levelWrap.insertBefore(cell, levelWrap.firstChild);
+        // the name column (.expander) has spare room; adding to .level-icons-wrap breaks
+        // the game's fixed column widths and wraps rows onto two lines
+        const expander = target.closest('li, tr')?.querySelector('.expander');
+        if (expander) {
+            expander.appendChild(cell);
+            cell.classList.add('in-expander');
         }
         else {
             target.insertAdjacentElement('afterend', cell);

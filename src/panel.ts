@@ -24,6 +24,10 @@ export function mountPanel(): void {
         a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
             font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
         a.recruiter-stats:hover { text-decoration: underline; }
+        a.recruiter-stats.in-expander { float: right; margin-right: 28px; }
+        /* BSP overlays its badge on the honor-bar area; shift plain names clear of it */
+        .recruiter-plain-names .TDup_ColoredStatsInjectionDiv ~ a .honor-text-wrap[data-recruiter-name] {
+            display: inline-block; margin-left: 44px; }
         /* plain names: hide the honor-bar graphic, render the name via ::after; the wrap stays in the layout */
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] { background: none !important; width: auto !important; min-width: 0 !important; height: auto !important; }
         .recruiter-plain-names .honor-text-wrap[data-recruiter-name] > * { display: none !important; }
