@@ -37,12 +37,13 @@ export function attachStats(target: HTMLElement, userId: number): void {
     const key = getApiKey();
     cell.textContent = key ? '…' : 'no API key';
 
-    // the name column (.expander) has spare room; adding to .level-icons-wrap breaks
-    // the game's fixed column widths and wraps rows onto two lines
-    const expander = target.closest('li, tr')?.querySelector('.expander');
-    if (expander) {
-        expander.appendChild(cell);
-        cell.classList.add('in-expander');
+    // on the user list the cell overlays the row's right edge as fixed-width columns
+    // matching the injected header; elsewhere (faction page) it stays inline after the name
+    const row = target.closest<HTMLElement>('li, tr');
+    const isUserList = !!row?.querySelector('.level-icons-wrap');
+    if (isUserList && row) {
+        cell.classList.add('recruiter-cols');
+        row.appendChild(cell);
     } else {
         target.insertAdjacentElement('afterend', cell);
     }
@@ -53,9 +54,15 @@ export function attachStats(target: HTMLElement, userId: number): void {
     enqueue(async () => {
         try {
             const s = await getUserStats(userId, key);
-            cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
-                + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`
-                + ` · <span class="bold">${s.streak}</span>d streak`;
+            if (isUserList) {
+                cell.innerHTML = `<span>${s.hoursPlayed.toLocaleString('en-US')}</span>`
+                    + `<span>${s.xanaxPerDay.toFixed(1)}</span>`
+                    + `<span>${s.streak}d</span>`;
+            } else {
+                cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
+                    + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`
+                    + ` · <span class="bold">${s.streak}</span>d streak`;
+            }
         } catch (e) {
             cell.textContent = 'API error';
             cell.title = String(e);

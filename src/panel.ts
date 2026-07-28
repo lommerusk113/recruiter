@@ -24,7 +24,12 @@ export function mountPanel(): void {
         a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
             font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
         a.recruiter-stats:hover { text-decoration: underline; }
-        a.recruiter-stats.in-expander { float: right; margin-right: 28px; }
+        /* fixed-width column overlay on the user list's right edge; header and rows share widths */
+        .users-list-title, .user-info-list-wrap > li { position: relative; }
+        .recruiter-cols { position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            white-space: nowrap; color: inherit; text-decoration: none; font-size: 12px; margin: 0; line-height: normal; }
+        .recruiter-cols > span { display: inline-block; width: 62px; }
+        a.recruiter-cols:hover { text-decoration: underline; }
         /* BSP overlays its badge on the honor-bar area; shift plain names clear of it */
         .recruiter-plain-names .TDup_ColoredStatsInjectionDiv ~ a .honor-text-wrap[data-recruiter-name] {
             display: inline-block; margin-left: 44px; }

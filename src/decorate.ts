@@ -3,7 +3,20 @@ import { ensurePlainNames } from './names';
 
 const seen = new Set<HTMLElement>();
 
+function ensureHeaderColumns(): void {
+    const header = document.querySelector('.users-list-title');
+    if (!header || header.querySelector('.recruiter-cols')) {
+        return;
+    }
+
+    const cols = document.createElement('div');
+    cols.className = 'recruiter-cols';
+    cols.innerHTML = '<span>Hours</span><span>Xan/day</span><span>Streak</span>';
+    header.appendChild(cols);
+}
+
 function scan(): void {
+    ensureHeaderColumns();
     if (document.documentElement.classList.contains('recruiter-plain-names')) {
         ensurePlainNames();
     }

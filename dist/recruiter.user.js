@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.6
+// @version      0.1.7
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -226,7 +226,12 @@
         a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
             font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
         a.recruiter-stats:hover { text-decoration: underline; }
-        a.recruiter-stats.in-expander { float: right; margin-right: 28px; }
+        /* fixed-width column overlay on the user list's right edge; header and rows share widths */
+        .users-list-title, .user-info-list-wrap > li { position: relative; }
+        .recruiter-cols { position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+            white-space: nowrap; color: inherit; text-decoration: none; font-size: 12px; margin: 0; line-height: normal; }
+        .recruiter-cols > span { display: inline-block; width: 62px; }
+        a.recruiter-cols:hover { text-decoration: underline; }
         /* BSP overlays its badge on the honor-bar area; shift plain names clear of it */
         .recruiter-plain-names .TDup_ColoredStatsInjectionDiv ~ a .honor-text-wrap[data-recruiter-name] {
             display: inline-block; margin-left: 44px; }
@@ -406,12 +411,13 @@
         cell.title = 'hours played · xanax per day (last 30d) · activity streak — click for profile';
         const key = getApiKey();
         cell.textContent = key ? '…' : 'no API key';
-        // the name column (.expander) has spare room; adding to .level-icons-wrap breaks
-        // the game's fixed column widths and wraps rows onto two lines
-        const expander = target.closest('li, tr')?.querySelector('.expander');
-        if (expander) {
-            expander.appendChild(cell);
-            cell.classList.add('in-expander');
+        // on the user list the cell overlays the row's right edge as fixed-width columns
+        // matching the injected header; elsewhere (faction page) it stays inline after the name
+        const row = target.closest('li, tr');
+        const isUserList = !!row?.querySelector('.level-icons-wrap');
+        if (isUserList && row) {
+            cell.classList.add('recruiter-cols');
+            row.appendChild(cell);
         }
         else {
             target.insertAdjacentElement('afterend', cell);
@@ -422,9 +428,16 @@
         enqueue(async () => {
             try {
                 const s = await getUserStats(userId, key);
-                cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
-                    + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`
-                    + ` · <span class="bold">${s.streak}</span>d streak`;
+                if (isUserList) {
+                    cell.innerHTML = `<span>${s.hoursPlayed.toLocaleString('en-US')}</span>`
+                        + `<span>${s.xanaxPerDay.toFixed(1)}</span>`
+                        + `<span>${s.streak}d</span>`;
+                }
+                else {
+                    cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
+                        + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`
+                        + ` · <span class="bold">${s.streak}</span>d streak`;
+                }
             }
             catch (e) {
                 cell.textContent = 'API error';
@@ -434,7 +447,18 @@
     }
 
     const seen = new Set();
+    function ensureHeaderColumns() {
+        const header = document.querySelector('.users-list-title');
+        if (!header || header.querySelector('.recruiter-cols')) {
+            return;
+        }
+        const cols = document.createElement('div');
+        cols.className = 'recruiter-cols';
+        cols.innerHTML = '<span>Hours</span><span>Xan/day</span><span>Streak</span>';
+        header.appendChild(cols);
+    }
     function scan() {
+        ensureHeaderColumns();
         if (document.documentElement.classList.contains('recruiter-plain-names')) {
             ensurePlainNames();
         }
