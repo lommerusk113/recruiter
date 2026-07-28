@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.1
+// @version      0.1.2
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -116,7 +116,8 @@
             url.searchParams.set('timestamp', String(timestamp));
         }
         const json = await apiCall(url);
-        return Object.fromEntries(json.personalstats.map(s => [s.name, s.value]));
+        // personalstats is null for e.g. timestamps before the account existed
+        return Object.fromEntries((json.personalstats ?? []).map(s => [s.name, s.value]));
     }
     /** Adjusts the limiter budget based on what other tools sharing this key are consuming. */
     async function syncBudget(key) {
@@ -186,22 +187,16 @@
 
     /**
      * Plain-names support: Torn draws names as an honor-bar image + per-char svg spans.
-     * We inject a real text span next to each honor wrap; CSS swaps them when the toggle is on.
+     * We stamp the real name onto the wrap as a data attribute; CSS hides the graphic and
+     * renders the name via ::after. The wrap element stays in the layout, so other scripts
+     * (e.g. BSP) that anchor their badges to it keep their positioning.
      */
     function ensurePlainNames() {
-        document.querySelectorAll('.honor-text-wrap').forEach(wrap => {
-            if (wrap.dataset.recruiterNamed) {
-                return;
-            }
-            wrap.dataset.recruiterNamed = '1';
+        document.querySelectorAll('.honor-text-wrap:not([data-recruiter-name])').forEach(wrap => {
             const name = (wrap.querySelector('img')?.alt ?? '').replace(/\s*\[\d+\]$/, '');
-            if (!name) {
-                return;
+            if (name) {
+                wrap.dataset.recruiterName = name;
             }
-            const span = document.createElement('span');
-            span.className = 'recruiter-name';
-            span.textContent = name;
-            wrap.insertAdjacentElement('afterend', span);
         });
     }
 
@@ -210,44 +205,55 @@
     function mountPanel() {
         const style = document.createElement('style');
         style.textContent = `
-        #recruiter-panel { position: fixed; bottom: 12px; right: 12px; z-index: 999999; font: 12px/1.4 Arial, sans-serif; color: #ddd; text-align: right; }
-        #recruiter-panel .recruiter-fab { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
-            border-radius: 50%; background: #333; border: 1px solid #555; color: #9c9; font-weight: bold; cursor: pointer; user-select: none; }
-        #recruiter-panel .recruiter-body { display: none; background: #222; border: 1px solid #444; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; text-align: left; }
-        #recruiter-panel.open .recruiter-body { display: block; }
+        #recruiter-fab { cursor: pointer; user-select: none; background: #333; color: #9c9; border: 1px solid #555;
+            font: bold 12px/20px Arial, sans-serif; }
+        #recruiter-fab.in-header { float: right; margin: 2px 8px 0 0; border-radius: 4px; padding: 0 8px; }
+        #recruiter-fab.floating { position: fixed; top: 12px; right: 12px; z-index: 999999; border-radius: 50%;
+            width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; }
+        #recruiter-panel { display: none; position: fixed; z-index: 999999; background: #222; border: 1px solid #444;
+            border-radius: 6px; padding: 8px 10px; font: 12px/1.4 Arial, sans-serif; color: #ddd; }
+        #recruiter-panel.open { display: block; }
         #recruiter-panel input[type=password] { margin-left: 6px; width: 150px; background: #111; color: #ddd; border: 1px solid #555; border-radius: 3px; padding: 2px 4px; }
         #recruiter-panel .recruiter-toggle { display: block; margin-top: 4px; cursor: pointer; }
         #recruiter-panel .recruiter-status { margin-top: 4px; color: #9c9; }
         #recruiter-panel .recruiter-usage { margin-top: 4px; color: #99c; cursor: pointer; text-decoration: underline; }
         .recruiter-stats { margin-left: 6px; padding: 1px 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.55);
             color: #7fd67f; font: 11px/1.5 Arial, sans-serif; white-space: nowrap; vertical-align: middle; display: inline-block; }
-        /* plain names: swap the honor-bar graphic for the injected text span */
-        .recruiter-name { display: none; font-weight: bold; vertical-align: middle; }
-        .recruiter-plain-names .honor-text-wrap { display: none !important; }
-        .recruiter-plain-names .recruiter-name { display: inline !important; }
+        /* plain names: hide the honor-bar graphic, render the name via ::after; the wrap stays in the layout */
+        .recruiter-plain-names .honor-text-wrap[data-recruiter-name] { background: none !important; width: auto !important; min-width: 0 !important; height: auto !important; }
+        .recruiter-plain-names .honor-text-wrap[data-recruiter-name] > * { display: none !important; }
+        .recruiter-plain-names .honor-text-wrap[data-recruiter-name]::after { content: attr(data-recruiter-name); font-weight: bold; }
     `;
         document.head.appendChild(style);
-        const box = document.createElement('div');
-        box.id = 'recruiter-panel';
-        box.innerHTML = '<div class="recruiter-body">'
-            + '<label>Torn API key<input type="password" placeholder="paste API key"></label>'
+        const panel = document.createElement('div');
+        panel.id = 'recruiter-panel';
+        panel.innerHTML = '<label>Torn API key<input type="password" placeholder="paste API key"></label>'
             + '<label class="recruiter-toggle"><input type="checkbox"> plain names (no backdrop)</label>'
             + '<div class="recruiter-status"></div>'
-            + '<div class="recruiter-usage">check API usage</div>'
-            + '</div>'
-            + '<div class="recruiter-fab" title="Torn Recruiter">TR</div>';
-        box.querySelector('.recruiter-fab').addEventListener('click', () => box.classList.toggle('open'));
-        const keyInput = box.querySelector('input[type=password]');
+            + '<div class="recruiter-usage">check API usage</div>';
+        const fab = document.createElement('div');
+        fab.id = 'recruiter-fab';
+        fab.textContent = 'TR';
+        fab.title = 'Torn Recruiter';
+        fab.addEventListener('click', () => {
+            if (panel.classList.toggle('open')) {
+                const rect = fab.getBoundingClientRect();
+                panel.style.top = `${rect.bottom + 8}px`;
+                panel.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
+            }
+        });
+        placeFab(fab);
+        const keyInput = panel.querySelector('input[type=password]');
         keyInput.value = getApiKey();
         keyInput.addEventListener('input', () => setApiKey(keyInput.value.trim()));
-        const toggle = box.querySelector('input[type=checkbox]');
+        const toggle = panel.querySelector('input[type=checkbox]');
         toggle.checked = localStorage.getItem(PLAIN_NAMES_KEY) === '1';
         applyPlainNames(toggle.checked);
         toggle.addEventListener('change', () => {
             localStorage.setItem(PLAIN_NAMES_KEY, toggle.checked ? '1' : '0');
             applyPlainNames(toggle.checked);
         });
-        const usage = box.querySelector('.recruiter-usage');
+        const usage = panel.querySelector('.recruiter-usage');
         usage.addEventListener('click', async () => {
             const key = getApiKey();
             if (!key) {
@@ -263,8 +269,23 @@
                 usage.textContent = String(e);
             }
         });
-        statusEl = box.querySelector('.recruiter-status');
-        document.body.appendChild(box);
+        statusEl = panel.querySelector('.recruiter-status');
+        document.body.appendChild(panel);
+    }
+    /** Prefers the page header; React pages render it late, so retry before falling back to a floating button. */
+    function placeFab(fab, tries = 10) {
+        const header = document.querySelector('.content-title');
+        if (header) {
+            fab.classList.add('in-header');
+            header.insertBefore(fab, header.firstChild);
+            return;
+        }
+        if (tries > 0) {
+            setTimeout(() => placeFab(fab, tries - 1), 300);
+            return;
+        }
+        fab.classList.add('floating');
+        document.body.appendChild(fab);
     }
     function applyPlainNames(enabled) {
         document.documentElement.classList.toggle('recruiter-plain-names', enabled);

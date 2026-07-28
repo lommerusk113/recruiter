@@ -73,7 +73,8 @@ async function fetchStats(userId: number, key: string, timestamp?: number): Prom
 
     const json = await apiCall(url);
 
-    return Object.fromEntries((json.personalstats as StatEntry[]).map(s => [s.name, s.value]));
+    // personalstats is null for e.g. timestamps before the account existed
+    return Object.fromEntries(((json.personalstats ?? []) as StatEntry[]).map(s => [s.name, s.value]));
 }
 
 /** Adjusts the limiter budget based on what other tools sharing this key are consuming. */

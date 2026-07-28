@@ -9,41 +9,52 @@ let statusEl: HTMLElement | undefined;
 export function mountPanel(): void {
     const style = document.createElement('style');
     style.textContent = `
-        #recruiter-panel { position: fixed; bottom: 12px; right: 12px; z-index: 999999; font: 12px/1.4 Arial, sans-serif; color: #ddd; text-align: right; }
-        #recruiter-panel .recruiter-fab { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
-            border-radius: 50%; background: #333; border: 1px solid #555; color: #9c9; font-weight: bold; cursor: pointer; user-select: none; }
-        #recruiter-panel .recruiter-body { display: none; background: #222; border: 1px solid #444; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; text-align: left; }
-        #recruiter-panel.open .recruiter-body { display: block; }
+        #recruiter-fab { cursor: pointer; user-select: none; background: #333; color: #9c9; border: 1px solid #555;
+            font: bold 12px/20px Arial, sans-serif; }
+        #recruiter-fab.in-header { float: right; margin: 2px 8px 0 0; border-radius: 4px; padding: 0 8px; }
+        #recruiter-fab.floating { position: fixed; top: 12px; right: 12px; z-index: 999999; border-radius: 50%;
+            width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; }
+        #recruiter-panel { display: none; position: fixed; z-index: 999999; background: #222; border: 1px solid #444;
+            border-radius: 6px; padding: 8px 10px; font: 12px/1.4 Arial, sans-serif; color: #ddd; }
+        #recruiter-panel.open { display: block; }
         #recruiter-panel input[type=password] { margin-left: 6px; width: 150px; background: #111; color: #ddd; border: 1px solid #555; border-radius: 3px; padding: 2px 4px; }
         #recruiter-panel .recruiter-toggle { display: block; margin-top: 4px; cursor: pointer; }
         #recruiter-panel .recruiter-status { margin-top: 4px; color: #9c9; }
         #recruiter-panel .recruiter-usage { margin-top: 4px; color: #99c; cursor: pointer; text-decoration: underline; }
         .recruiter-stats { margin-left: 6px; padding: 1px 5px; border-radius: 3px; background: rgba(0, 0, 0, 0.55);
             color: #7fd67f; font: 11px/1.5 Arial, sans-serif; white-space: nowrap; vertical-align: middle; display: inline-block; }
-        /* plain names: swap the honor-bar graphic for the injected text span */
-        .recruiter-name { display: none; font-weight: bold; vertical-align: middle; }
-        .recruiter-plain-names .honor-text-wrap { display: none !important; }
-        .recruiter-plain-names .recruiter-name { display: inline !important; }
+        /* plain names: hide the honor-bar graphic, render the name via ::after; the wrap stays in the layout */
+        .recruiter-plain-names .honor-text-wrap[data-recruiter-name] { background: none !important; width: auto !important; min-width: 0 !important; height: auto !important; }
+        .recruiter-plain-names .honor-text-wrap[data-recruiter-name] > * { display: none !important; }
+        .recruiter-plain-names .honor-text-wrap[data-recruiter-name]::after { content: attr(data-recruiter-name); font-weight: bold; }
     `;
     document.head.appendChild(style);
 
-    const box = document.createElement('div');
-    box.id = 'recruiter-panel';
-    box.innerHTML = '<div class="recruiter-body">'
-        + '<label>Torn API key<input type="password" placeholder="paste API key"></label>'
+    const panel = document.createElement('div');
+    panel.id = 'recruiter-panel';
+    panel.innerHTML = '<label>Torn API key<input type="password" placeholder="paste API key"></label>'
         + '<label class="recruiter-toggle"><input type="checkbox"> plain names (no backdrop)</label>'
         + '<div class="recruiter-status"></div>'
-        + '<div class="recruiter-usage">check API usage</div>'
-        + '</div>'
-        + '<div class="recruiter-fab" title="Torn Recruiter">TR</div>';
+        + '<div class="recruiter-usage">check API usage</div>';
 
-    box.querySelector<HTMLElement>('.recruiter-fab')!.addEventListener('click', () => box.classList.toggle('open'));
+    const fab = document.createElement('div');
+    fab.id = 'recruiter-fab';
+    fab.textContent = 'TR';
+    fab.title = 'Torn Recruiter';
+    fab.addEventListener('click', () => {
+        if (panel.classList.toggle('open')) {
+            const rect = fab.getBoundingClientRect();
+            panel.style.top = `${rect.bottom + 8}px`;
+            panel.style.right = `${Math.max(12, window.innerWidth - rect.right)}px`;
+        }
+    });
+    placeFab(fab);
 
-    const keyInput = box.querySelector<HTMLInputElement>('input[type=password]')!;
+    const keyInput = panel.querySelector<HTMLInputElement>('input[type=password]')!;
     keyInput.value = getApiKey();
     keyInput.addEventListener('input', () => setApiKey(keyInput.value.trim()));
 
-    const toggle = box.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+    const toggle = panel.querySelector<HTMLInputElement>('input[type=checkbox]')!;
     toggle.checked = localStorage.getItem(PLAIN_NAMES_KEY) === '1';
     applyPlainNames(toggle.checked);
     toggle.addEventListener('change', () => {
@@ -51,7 +62,7 @@ export function mountPanel(): void {
         applyPlainNames(toggle.checked);
     });
 
-    const usage = box.querySelector<HTMLElement>('.recruiter-usage')!;
+    const usage = panel.querySelector<HTMLElement>('.recruiter-usage')!;
     usage.addEventListener('click', async () => {
         const key = getApiKey();
         if (!key) {
@@ -67,8 +78,24 @@ export function mountPanel(): void {
         }
     });
 
-    statusEl = box.querySelector<HTMLElement>('.recruiter-status')!;
-    document.body.appendChild(box);
+    statusEl = panel.querySelector<HTMLElement>('.recruiter-status')!;
+    document.body.appendChild(panel);
+}
+
+/** Prefers the page header; React pages render it late, so retry before falling back to a floating button. */
+function placeFab(fab: HTMLElement, tries = 10): void {
+    const header = document.querySelector('.content-title');
+    if (header) {
+        fab.classList.add('in-header');
+        header.insertBefore(fab, header.firstChild);
+        return;
+    }
+    if (tries > 0) {
+        setTimeout(() => placeFab(fab, tries - 1), 300);
+        return;
+    }
+    fab.classList.add('floating');
+    document.body.appendChild(fab);
 }
 
 function applyPlainNames(enabled: boolean): void {
