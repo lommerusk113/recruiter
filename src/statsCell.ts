@@ -55,9 +55,9 @@ export function attachStats(target: HTMLElement, userId: number): void {
         try {
             const s = await getUserStats(userId, key);
             if (isUserList) {
-                cell.innerHTML = `<span>${s.hoursPlayed.toLocaleString('en-US')}</span>`
-                    + `<span>${s.xanaxPerDay.toFixed(1)}</span>`
-                    + `<span>${s.streak}d</span>`;
+                cell.innerHTML = `<span class="torn-divider divider-vertical">${s.hoursPlayed.toLocaleString('en-US')}</span>`
+                    + `<span class="torn-divider divider-vertical">${s.xanaxPerDay.toFixed(1)}</span>`
+                    + `<span class="torn-divider divider-vertical">${s.streak}d</span>`;
             } else {
                 cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
                     + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`

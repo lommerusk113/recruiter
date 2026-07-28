@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.7
+// @version      0.1.8
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -228,9 +228,9 @@
         a.recruiter-stats:hover { text-decoration: underline; }
         /* fixed-width column overlay on the user list's right edge; header and rows share widths */
         .users-list-title, .user-info-list-wrap > li { position: relative; }
-        .recruiter-cols { position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+        .recruiter-cols { position: absolute; right: 0; top: 0; bottom: 0; display: flex; align-items: stretch;
             white-space: nowrap; color: inherit; text-decoration: none; font-size: 12px; margin: 0; line-height: normal; }
-        .recruiter-cols > span { display: inline-block; width: 62px; }
+        .recruiter-cols > span { width: 66px; display: flex; align-items: center; justify-content: center; text-align: center; }
         a.recruiter-cols:hover { text-decoration: underline; }
         /* BSP overlays its badge on the honor-bar area; shift plain names clear of it */
         .recruiter-plain-names .TDup_ColoredStatsInjectionDiv ~ a .honor-text-wrap[data-recruiter-name] {
@@ -429,9 +429,9 @@
             try {
                 const s = await getUserStats(userId, key);
                 if (isUserList) {
-                    cell.innerHTML = `<span>${s.hoursPlayed.toLocaleString('en-US')}</span>`
-                        + `<span>${s.xanaxPerDay.toFixed(1)}</span>`
-                        + `<span>${s.streak}d</span>`;
+                    cell.innerHTML = `<span class="torn-divider divider-vertical">${s.hoursPlayed.toLocaleString('en-US')}</span>`
+                        + `<span class="torn-divider divider-vertical">${s.xanaxPerDay.toFixed(1)}</span>`
+                        + `<span class="torn-divider divider-vertical">${s.streak}d</span>`;
                 }
                 else {
                     cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
@@ -454,7 +454,9 @@
         }
         const cols = document.createElement('div');
         cols.className = 'recruiter-cols';
-        cols.innerHTML = '<span>Hours</span><span>Xan/day</span><span>Streak</span>';
+        cols.innerHTML = '<span class="title-divider divider-spiky">Hours</span>'
+            + '<span class="title-divider divider-spiky">Xan / day</span>'
+            + '<span class="title-divider divider-spiky">Streak</span>';
         header.appendChild(cols);
     }
     function scan() {
