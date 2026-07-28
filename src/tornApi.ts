@@ -105,14 +105,33 @@ export async function getRecentCallCount(key: string): Promise<number> {
     return entries.filter(e => e.timestamp > cutoff).length;
 }
 
+const CACHE_TTL_MS = 24 * 3600 * 1000;
+
 function cacheKey(userId: number): string {
     return `recruiter-stats-${userId}`;
 }
 
+function readCache(userId: number): UserStats | null {
+    const raw = localStorage.getItem(cacheKey(userId));
+    if (!raw) {
+        return null;
+    }
+    try {
+        const { at, stats } = JSON.parse(raw);
+        if (Date.now() - at < CACHE_TTL_MS) {
+            return stats;
+        }
+    } catch {
+        // old/corrupt format falls through to refetch
+    }
+    localStorage.removeItem(cacheKey(userId));
+    return null;
+}
+
 export async function getUserStats(userId: number, key: string): Promise<UserStats> {
-    const cached = sessionStorage.getItem(cacheKey(userId));
+    const cached = readCache(userId);
     if (cached) {
-        return JSON.parse(cached);
+        return cached;
     }
 
     await syncBudget(key);
@@ -124,11 +143,11 @@ export async function getUserStats(userId: number, key: string): Promise<UserSta
     const streak = now.activestreak ?? 0;
     const stats: UserStats = {
         hoursPlayed: Math.round((now.useractivity ?? 0) / 3600),
-        // ponytail: per spec — (xanax now - xanax a month ago) / current activity streak days
-        xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / Math.max(streak, 1),
+        // xanax diff covers the last 30 days, so cap the divisor at 30 for longer streaks
+        xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / Math.min(Math.max(streak, 1), 30),
         streak
     };
 
-    sessionStorage.setItem(cacheKey(userId), JSON.stringify(stats));
+    localStorage.setItem(cacheKey(userId), JSON.stringify({ at: Date.now(), stats }));
     return stats;
 }

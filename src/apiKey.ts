@@ -1,9 +1,10 @@
 const STORAGE_KEY = 'recruiter-api-key';
 
 export function getApiKey(): string {
-    return sessionStorage.getItem(STORAGE_KEY) ?? '';
+    // sessionStorage fallback migrates keys saved by older versions
+    return localStorage.getItem(STORAGE_KEY) ?? sessionStorage.getItem(STORAGE_KEY) ?? '';
 }
 
 export function setApiKey(key: string): void {
-    sessionStorage.setItem(STORAGE_KEY, key);
+    localStorage.setItem(STORAGE_KEY, key);
 }

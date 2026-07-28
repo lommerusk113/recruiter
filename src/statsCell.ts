@@ -37,7 +37,8 @@ export function attachStats(target: HTMLElement, userId: number): void {
     enqueue(async () => {
         try {
             const s = await getUserStats(userId, key);
-            span.textContent = `${s.hoursPlayed} h | ${s.xanaxPerDay.toFixed(2)} xan/day | ${s.streak} d streak`;
+            span.textContent = `${s.hoursPlayed}h · ${s.xanaxPerDay.toFixed(1)} xan/d · ${s.streak}d`;
+            span.title = 'hours played · xanax per day (last 30d / streak) · activity streak';
         } catch (e) {
             span.textContent = String(e);
         }
