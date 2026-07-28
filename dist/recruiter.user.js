@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.4
+// @version      0.1.5
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -56,7 +56,7 @@
     }
 
     const DAY_SECONDS = 86400;
-    const STATS = 'xantaken,useractivity,activestreak';
+    const STATS = 'xantaken,timeplayed,activestreak';
     // Torn allows 100 calls/min per key. The budget starts conservative and auto-adjusts:
     // every 30s we check /v2/key/log for calls made by OTHER tools sharing this key and
     // shrink/grow our share accordingly (95 target leaves a small safety margin).
@@ -145,8 +145,9 @@
         return entries.filter(e => e.timestamp > cutoff).length;
     }
     const CACHE_TTL_MS = 24 * 3600 * 1000;
+    // v2 suffix invalidates entries cached while the stat was misnamed and hours were always 0
     function cacheKey(userId) {
-        return `recruiter-stats-${userId}`;
+        return `recruiter-stats-v2-${userId}`;
     }
     function readCache(userId) {
         const raw = localStorage.getItem(cacheKey(userId));
@@ -172,11 +173,13 @@
         }
         await syncBudget(key);
         const monthAgo = Math.floor(Date.now() / 1000) - 30 * DAY_SECONDS;
-        const now = await fetchStats(userId, key);
-        const past = await fetchStats(userId, key, monthAgo);
+        const [now, past] = await Promise.all([
+            fetchStats(userId, key),
+            fetchStats(userId, key, monthAgo)
+        ]);
         const streak = now.activestreak ?? 0;
         const stats = {
-            hoursPlayed: Math.round((now.useractivity ?? 0) / 3600),
+            hoursPlayed: Math.round((now.timeplayed ?? 0) / 3600),
             // xanax diff covers the last 30 days, so cap the divisor at 30 for longer streaks
             xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / Math.min(Math.max(streak, 1), 30),
             streak
@@ -422,7 +425,9 @@
 
     const seen = new Set();
     function scan() {
-        ensurePlainNames();
+        if (document.documentElement.classList.contains('recruiter-plain-names')) {
+            ensurePlainNames();
+        }
         document.querySelectorAll('a[href*="profiles.php?XID="]').forEach(anchor => {
             if (seen.has(anchor) || anchor.closest('#recruiter-panel')) {
                 return;

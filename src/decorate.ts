@@ -4,7 +4,9 @@ import { ensurePlainNames } from './names';
 const seen = new Set<HTMLElement>();
 
 function scan(): void {
-    ensurePlainNames();
+    if (document.documentElement.classList.contains('recruiter-plain-names')) {
+        ensurePlainNames();
+    }
 
     document.querySelectorAll<HTMLAnchorElement>('a[href*="profiles.php?XID="]').forEach(anchor => {
         if (seen.has(anchor) || anchor.closest('#recruiter-panel')) {

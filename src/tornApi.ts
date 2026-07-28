@@ -1,7 +1,7 @@
 import { UserStats } from './types';
 
 const DAY_SECONDS = 86400;
-const STATS = 'xantaken,useractivity,activestreak';
+const STATS = 'xantaken,timeplayed,activestreak';
 
 // Torn allows 100 calls/min per key. The budget starts conservative and auto-adjusts:
 // every 30s we check /v2/key/log for calls made by OTHER tools sharing this key and
@@ -108,8 +108,9 @@ export async function getRecentCallCount(key: string): Promise<number> {
 
 const CACHE_TTL_MS = 24 * 3600 * 1000;
 
+// v2 suffix invalidates entries cached while the stat was misnamed and hours were always 0
 function cacheKey(userId: number): string {
-    return `recruiter-stats-${userId}`;
+    return `recruiter-stats-v2-${userId}`;
 }
 
 function readCache(userId: number): UserStats | null {
@@ -138,12 +139,14 @@ export async function getUserStats(userId: number, key: string): Promise<UserSta
     await syncBudget(key);
 
     const monthAgo = Math.floor(Date.now() / 1000) - 30 * DAY_SECONDS;
-    const now = await fetchStats(userId, key);
-    const past = await fetchStats(userId, key, monthAgo);
+    const [now, past] = await Promise.all([
+        fetchStats(userId, key),
+        fetchStats(userId, key, monthAgo)
+    ]);
 
     const streak = now.activestreak ?? 0;
     const stats: UserStats = {
-        hoursPlayed: Math.round((now.useractivity ?? 0) / 3600),
+        hoursPlayed: Math.round((now.timeplayed ?? 0) / 3600),
         // xanax diff covers the last 30 days, so cap the divisor at 30 for longer streaks
         xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / Math.min(Math.max(streak, 1), 30),
         streak
