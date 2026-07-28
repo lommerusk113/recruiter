@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.2
+// @version      0.1.3
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -272,20 +272,37 @@
         statusEl = panel.querySelector('.recruiter-status');
         document.body.appendChild(panel);
     }
+    function findVisibleHeader() {
+        // legacy pages use .content-title; React pages (factions) keep an #skip-to-content anchor in their header
+        const el = document.querySelector('.content-title')
+            ?? document.getElementById('skip-to-content')?.parentElement
+            ?? null;
+        return el?.offsetParent ? el : null;
+    }
     /** Prefers the page header; React pages render it late, so retry before falling back to a floating button. */
     function placeFab(fab, tries = 10) {
-        const header = document.querySelector('.content-title');
+        const header = findVisibleHeader();
         if (header) {
             fab.classList.add('in-header');
+            fab.classList.remove('floating');
             header.insertBefore(fab, header.firstChild);
-            return;
         }
-        if (tries > 0) {
+        else if (tries > 0) {
             setTimeout(() => placeFab(fab, tries - 1), 300);
             return;
         }
-        fab.classList.add('floating');
-        document.body.appendChild(fab);
+        else {
+            fab.classList.remove('in-header');
+            fab.classList.add('floating');
+            document.body.appendChild(fab);
+        }
+        // React re-renders can drop injected nodes — re-place the button if that happens
+        const guard = setInterval(() => {
+            if (!fab.isConnected) {
+                clearInterval(guard);
+                placeFab(fab);
+            }
+        }, 2000);
     }
     function applyPlainNames(enabled) {
         document.documentElement.classList.toggle('recruiter-plain-names', enabled);

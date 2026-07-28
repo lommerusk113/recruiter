@@ -82,20 +82,38 @@ export function mountPanel(): void {
     document.body.appendChild(panel);
 }
 
+function findVisibleHeader(): HTMLElement | null {
+    // legacy pages use .content-title; React pages (factions) keep an #skip-to-content anchor in their header
+    const el = document.querySelector<HTMLElement>('.content-title')
+        ?? document.getElementById('skip-to-content')?.parentElement
+        ?? null;
+
+    return el?.offsetParent ? el : null;
+}
+
 /** Prefers the page header; React pages render it late, so retry before falling back to a floating button. */
 function placeFab(fab: HTMLElement, tries = 10): void {
-    const header = document.querySelector('.content-title');
+    const header = findVisibleHeader();
     if (header) {
         fab.classList.add('in-header');
+        fab.classList.remove('floating');
         header.insertBefore(fab, header.firstChild);
-        return;
-    }
-    if (tries > 0) {
+    } else if (tries > 0) {
         setTimeout(() => placeFab(fab, tries - 1), 300);
         return;
+    } else {
+        fab.classList.remove('in-header');
+        fab.classList.add('floating');
+        document.body.appendChild(fab);
     }
-    fab.classList.add('floating');
-    document.body.appendChild(fab);
+
+    // React re-renders can drop injected nodes — re-place the button if that happens
+    const guard = setInterval(() => {
+        if (!fab.isConnected) {
+            clearInterval(guard);
+            placeFab(fab);
+        }
+    }, 2000);
 }
 
 function applyPlainNames(enabled: boolean): void {
