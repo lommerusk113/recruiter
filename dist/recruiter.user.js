@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.10
+// @version      0.1.11
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -381,23 +381,23 @@
         }
     }
 
-    // Sequential queue so cells fill top-down one user at a time; actual pacing and
-    // retries live in tornApi's rate limiter.
+    // Small worker pool: cells still fill roughly top-down, but 4 users load concurrently.
+    // Rate pacing and retries live in tornApi's limiter, so this only bounds burstiness.
+    const CONCURRENCY = 4;
     const queue = [];
-    let running = false;
+    let active = 0;
     function enqueue(job) {
         queue.push(job);
-        if (!running) {
-            void run();
-        }
+        pump();
     }
-    async function run() {
-        running = true;
-        while (queue.length) {
-            await queue.shift()();
-            await new Promise(r => setTimeout(r, 100));
+    function pump() {
+        while (active < CONCURRENCY && queue.length) {
+            active++;
+            void queue.shift()().finally(() => {
+                active--;
+                pump();
+            });
         }
-        running = false;
     }
     /**
      * Inserts a "hours · xan/day · streak" cell and fills it from the API.

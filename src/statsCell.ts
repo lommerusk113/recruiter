@@ -1,25 +1,25 @@
 import { getApiKey } from './apiKey';
 import { getUserStats } from './tornApi';
 
-// Sequential queue so cells fill top-down one user at a time; actual pacing and
-// retries live in tornApi's rate limiter.
+// Small worker pool: cells still fill roughly top-down, but 4 users load concurrently.
+// Rate pacing and retries live in tornApi's limiter, so this only bounds burstiness.
+const CONCURRENCY = 4;
 const queue: Array<() => Promise<void>> = [];
-let running = false;
+let active = 0;
 
 function enqueue(job: () => Promise<void>): void {
     queue.push(job);
-    if (!running) {
-        void run();
-    }
+    pump();
 }
 
-async function run(): Promise<void> {
-    running = true;
-    while (queue.length) {
-        await queue.shift()!();
-        await new Promise(r => setTimeout(r, 100));
+function pump(): void {
+    while (active < CONCURRENCY && queue.length) {
+        active++;
+        void queue.shift()!().finally(() => {
+            active--;
+            pump();
+        });
     }
-    running = false;
 }
 
 /**
