@@ -108,9 +108,9 @@ export async function getRecentCallCount(key: string): Promise<number> {
 
 const CACHE_TTL_MS = 24 * 3600 * 1000;
 
-// v2 suffix invalidates entries cached while the stat was misnamed and hours were always 0
+// version suffix invalidates entries cached under older stat formats
 function cacheKey(userId: number): string {
-    return `recruiter-stats-v2-${userId}`;
+    return `recruiter-stats-v3-${userId}`;
 }
 
 function readCache(userId: number): UserStats | null {
@@ -149,10 +149,11 @@ export async function getUserStats(userId: number, key: string): Promise<UserSta
     }
 
     const streak = now.activestreak ?? 0;
+    // the diffs cover the last 30 days, so cap the divisor at 30 for longer streaks
+    const days = Math.min(Math.max(streak, 1), 30);
     const stats: UserStats = {
-        hoursPlayed: Math.round((now.timeplayed ?? 0) / 3600),
-        // xanax diff covers the last 30 days, so cap the divisor at 30 for longer streaks
-        xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / Math.min(Math.max(streak, 1), 30),
+        hoursPerDay: ((now.timeplayed ?? 0) - (past.timeplayed ?? 0)) / 3600 / days,
+        xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / days,
         streak
     };
 

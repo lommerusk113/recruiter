@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.11
+// @version      0.1.12
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -145,9 +145,9 @@
         return entries.filter(e => e.timestamp > cutoff).length;
     }
     const CACHE_TTL_MS = 24 * 3600 * 1000;
-    // v2 suffix invalidates entries cached while the stat was misnamed and hours were always 0
+    // version suffix invalidates entries cached under older stat formats
     function cacheKey(userId) {
-        return `recruiter-stats-v2-${userId}`;
+        return `recruiter-stats-v3-${userId}`;
     }
     function readCache(userId) {
         const raw = localStorage.getItem(cacheKey(userId));
@@ -181,10 +181,11 @@
             console.warn('[recruiter] timeplayed missing from personalstats response', now);
         }
         const streak = now.activestreak ?? 0;
+        // the diffs cover the last 30 days, so cap the divisor at 30 for longer streaks
+        const days = Math.min(Math.max(streak, 1), 30);
         const stats = {
-            hoursPlayed: Math.round((now.timeplayed ?? 0) / 3600),
-            // xanax diff covers the last 30 days, so cap the divisor at 30 for longer streaks
-            xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / Math.min(Math.max(streak, 1), 30),
+            hoursPerDay: ((now.timeplayed ?? 0) - (past.timeplayed ?? 0)) / 3600 / days,
+            xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / days,
             streak
         };
         localStorage.setItem(cacheKey(userId), JSON.stringify({ at: Date.now(), stats }));
@@ -374,7 +375,7 @@
         }
         try {
             const s = await getUserStats(userId, key);
-            setStatus(`${s.hoursPlayed} h played | ${s.xanaxPerDay.toFixed(2)} xan/day | ${s.streak} d streak`);
+            setStatus(`${s.hoursPerDay.toFixed(1)} hrs/day | ${s.xanaxPerDay.toFixed(2)} xan/day | ${s.streak} d streak`);
         }
         catch (e) {
             setStatus(String(e));
@@ -409,7 +410,7 @@
         const cell = document.createElement('a');
         cell.className = 'recruiter-stats';
         cell.href = `/profiles.php?XID=${userId}`;
-        cell.title = 'hours played · xanax per day (last 30d) · activity streak — click for profile';
+        cell.title = 'hours per day · xanax per day (both last 30d) · activity streak — click for profile';
         const key = getApiKey();
         cell.textContent = key ? '…' : 'no API key';
         // on the user list the cell overlays the row's right edge as fixed-width columns
@@ -430,12 +431,12 @@
             try {
                 const s = await getUserStats(userId, key);
                 if (isUserList) {
-                    cell.innerHTML = `<span class="torn-divider divider-vertical">${s.hoursPlayed.toLocaleString('en-US')}</span>`
+                    cell.innerHTML = `<span class="torn-divider divider-vertical">${s.hoursPerDay.toFixed(1)}</span>`
                         + `<span class="torn-divider divider-vertical">${s.xanaxPerDay.toFixed(1)}</span>`
                         + `<span class="torn-divider divider-vertical">${s.streak}d</span>`;
                 }
                 else {
-                    cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
+                    cell.innerHTML = `<span class="bold">${s.hoursPerDay.toFixed(1)}</span> hrs/d`
                         + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`
                         + ` · <span class="bold">${s.streak}</span>d streak`;
                 }
@@ -455,7 +456,7 @@
         }
         const cols = document.createElement('div');
         cols.className = 'recruiter-cols';
-        cols.innerHTML = '<span class="title-divider divider-spiky">Hours</span>'
+        cols.innerHTML = '<span class="title-divider divider-spiky">Hrs / day</span>'
             + '<span class="title-divider divider-spiky">Xan / day</span>'
             + '<span class="title-divider divider-spiky">Streak</span>';
         header.appendChild(cols);

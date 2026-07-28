@@ -14,7 +14,7 @@ export interface UserListResponse {
 }
 
 export interface UserStats {
-    hoursPlayed: number;
+    hoursPerDay: number;
     xanaxPerDay: number;
     streak: number;
 }

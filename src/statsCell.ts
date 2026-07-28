@@ -32,7 +32,7 @@ export function attachStats(target: HTMLElement, userId: number): void {
     const cell = document.createElement('a');
     cell.className = 'recruiter-stats';
     cell.href = `/profiles.php?XID=${userId}`;
-    cell.title = 'hours played · xanax per day (last 30d) · activity streak — click for profile';
+    cell.title = 'hours per day · xanax per day (both last 30d) · activity streak — click for profile';
 
     const key = getApiKey();
     cell.textContent = key ? '…' : 'no API key';
@@ -55,11 +55,11 @@ export function attachStats(target: HTMLElement, userId: number): void {
         try {
             const s = await getUserStats(userId, key);
             if (isUserList) {
-                cell.innerHTML = `<span class="torn-divider divider-vertical">${s.hoursPlayed.toLocaleString('en-US')}</span>`
+                cell.innerHTML = `<span class="torn-divider divider-vertical">${s.hoursPerDay.toFixed(1)}</span>`
                     + `<span class="torn-divider divider-vertical">${s.xanaxPerDay.toFixed(1)}</span>`
                     + `<span class="torn-divider divider-vertical">${s.streak}d</span>`;
             } else {
-                cell.innerHTML = `<span class="bold">${s.hoursPlayed.toLocaleString('en-US')}</span> hrs`
+                cell.innerHTML = `<span class="bold">${s.hoursPerDay.toFixed(1)}</span> hrs/d`
                     + ` · <span class="bold">${s.xanaxPerDay.toFixed(1)}</span> xan/d`
                     + ` · <span class="bold">${s.streak}</span>d streak`;
             }

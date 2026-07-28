@@ -11,7 +11,7 @@ function ensureHeaderColumns(): void {
 
     const cols = document.createElement('div');
     cols.className = 'recruiter-cols';
-    cols.innerHTML = '<span class="title-divider divider-spiky">Hours</span>'
+    cols.innerHTML = '<span class="title-divider divider-spiky">Hrs / day</span>'
         + '<span class="title-divider divider-spiky">Xan / day</span>'
         + '<span class="title-divider divider-spiky">Streak</span>';
     header.appendChild(cols);
