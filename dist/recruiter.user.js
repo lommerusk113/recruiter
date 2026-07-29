@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.13
+// @version      0.1.14
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -147,7 +147,7 @@
     const CACHE_TTL_MS = 24 * 3600 * 1000;
     // version suffix invalidates entries cached under older stat formats
     function cacheKey(userId) {
-        return `recruiter-stats-v3-${userId}`;
+        return `recruiter-stats-v4-${userId}`;
     }
     function readCache(userId) {
         const raw = localStorage.getItem(cacheKey(userId));
@@ -181,11 +181,12 @@
             console.warn('[recruiter] timeplayed missing from personalstats response', now);
         }
         const streak = now.activestreak ?? 0;
-        // the diffs cover the last 30 days, so cap the divisor at 30 for longer streaks
-        const days = Math.min(Math.max(streak, 1), 30);
+        // the diffs cover the last 30 days, so cap the divisor at 30 for longer streaks;
+        // streak 0 means not currently active — show 0/day instead of dividing by nothing
+        const days = Math.min(streak, 30);
         const stats = {
-            hoursPerDay: ((now.timeplayed ?? 0) - (past.timeplayed ?? 0)) / 3600 / days,
-            xanaxPerDay: ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / days,
+            hoursPerDay: streak === 0 ? 0 : ((now.timeplayed ?? 0) - (past.timeplayed ?? 0)) / 3600 / days,
+            xanaxPerDay: streak === 0 ? 0 : ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / days,
             streak
         };
         localStorage.setItem(cacheKey(userId), JSON.stringify({ at: Date.now(), stats }));
