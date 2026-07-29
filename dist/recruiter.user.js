@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.15
+// @version      0.1.16
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
@@ -166,6 +166,24 @@
         localStorage.removeItem(cacheKey(userId));
         return null;
     }
+    function writeCache(userId, stats) {
+        const value = JSON.stringify({ at: Date.now(), stats });
+        try {
+            localStorage.setItem(cacheKey(userId), value);
+        }
+        catch {
+            // storage quota exceeded — drop all our cached stats (old versions included) and retry
+            Object.keys(localStorage)
+                .filter(k => k.startsWith('recruiter-stats-'))
+                .forEach(k => localStorage.removeItem(k));
+            try {
+                localStorage.setItem(cacheKey(userId), value);
+            }
+            catch {
+                // still full (someone else's data) — serve uncached, never fail the caller
+            }
+        }
+    }
     async function getUserStats(userId, key) {
         const cached = readCache(userId);
         if (cached) {
@@ -189,7 +207,10 @@
             xanaxPerDay: streak === 0 ? 0 : ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / days,
             streak
         };
-        localStorage.setItem(cacheKey(userId), JSON.stringify({ at: Date.now(), stats }));
+        // an empty personalstats response would cache misleading zeros — display but don't store
+        if (now.timeplayed !== undefined) {
+            writeCache(userId, stats);
+        }
         return stats;
     }
 

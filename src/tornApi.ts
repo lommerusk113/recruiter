@@ -130,6 +130,23 @@ function readCache(userId: number): UserStats | null {
     return null;
 }
 
+function writeCache(userId: number, stats: UserStats): void {
+    const value = JSON.stringify({ at: Date.now(), stats });
+    try {
+        localStorage.setItem(cacheKey(userId), value);
+    } catch {
+        // storage quota exceeded — drop all our cached stats (old versions included) and retry
+        Object.keys(localStorage)
+            .filter(k => k.startsWith('recruiter-stats-'))
+            .forEach(k => localStorage.removeItem(k));
+        try {
+            localStorage.setItem(cacheKey(userId), value);
+        } catch {
+            // still full (someone else's data) — serve uncached, never fail the caller
+        }
+    }
+}
+
 export async function getUserStats(userId: number, key: string): Promise<UserStats> {
     const cached = readCache(userId);
     if (cached) {
@@ -158,6 +175,10 @@ export async function getUserStats(userId: number, key: string): Promise<UserSta
         streak
     };
 
-    localStorage.setItem(cacheKey(userId), JSON.stringify({ at: Date.now(), stats }));
+    // an empty personalstats response would cache misleading zeros — display but don't store
+    if (now.timeplayed !== undefined) {
+        writeCache(userId, stats);
+    }
+
     return stats;
 }
