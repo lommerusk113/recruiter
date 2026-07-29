@@ -110,7 +110,7 @@ const CACHE_TTL_MS = 24 * 3600 * 1000;
 
 // version suffix invalidates entries cached under older stat formats
 function cacheKey(userId: number): string {
-    return `recruiter-stats-v4-${userId}`;
+    return `recruiter-stats-v5-${userId}`;
 }
 
 function readCache(userId: number): UserStats | null {
@@ -138,20 +138,20 @@ export async function getUserStats(userId: number, key: string): Promise<UserSta
 
     await syncBudget(key);
 
-    const monthAgo = Math.floor(Date.now() / 1000) - 30 * DAY_SECONDS;
-    const [now, past] = await Promise.all([
-        fetchStats(userId, key),
-        fetchStats(userId, key, monthAgo)
-    ]);
-
+    const now = await fetchStats(userId, key);
     if (now.timeplayed === undefined) {
         console.warn('[recruiter] timeplayed missing from personalstats response', now);
     }
 
     const streak = now.activestreak ?? 0;
-    // the diffs cover the last 30 days, so cap the divisor at 30 for longer streaks;
-    // streak 0 means not currently active — show 0/day instead of dividing by nothing
+    // window = the current streak, capped at 30 days; the historical snapshot is taken
+    // at the start of that window so diff and divisor cover the same period.
+    // streak 0 means not currently active — show 0/day.
     const days = Math.min(streak, 30);
+    const past = days > 0
+        ? await fetchStats(userId, key, Math.floor(Date.now() / 1000) - days * DAY_SECONDS)
+        : now;
+
     const stats: UserStats = {
         hoursPerDay: streak === 0 ? 0 : ((now.timeplayed ?? 0) - (past.timeplayed ?? 0)) / 3600 / days,
         xanaxPerDay: streak === 0 ? 0 : ((now.xantaken ?? 0) - (past.xantaken ?? 0)) / days,
