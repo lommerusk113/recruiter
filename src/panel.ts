@@ -24,8 +24,6 @@ export function mountPanel(): void {
         a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
             font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
         a.recruiter-stats:hover { text-decoration: underline; }
-        a.recruiter-stats.member-cell { display: block; clear: both; font-size: 11px; line-height: 1.5;
-            margin: 0; padding: 0 10px 3px; }
         /* fixed-width column overlay on the user list's right edge; header and rows share widths */
         .users-list-title, .user-info-list-wrap > li { position: relative; }
         .recruiter-cols, a.recruiter-stats.recruiter-cols { position: absolute; right: 0; top: 0; bottom: 0;

@@ -4,27 +4,33 @@ import { mountPanel } from './panel';
 import { showProfileStats } from './profile';
 import { watchProfileLinks } from './decorate';
 
-installInterceptor();
-onUserList(handleUserList);
+const params = new URLSearchParams(location.search);
+const isProfile = location.pathname === '/profiles.php';
+const isSearch = location.pathname === '/userlist.php'
+    || (location.pathname === '/page.php' && params.get('sid') === 'UserList');
 
-function start(): void {
-    mountPanel();
-
-    const params = new URLSearchParams(location.search);
-    const xid = params.get('XID');
-    if (location.pathname === '/profiles.php' && xid) {
-        void showProfileStats(Number(xid));
+// active only on profiles and the (advanced) search page — inert everywhere else
+if (isProfile || isSearch) {
+    if (isSearch) {
+        installInterceptor();
+        onUserList(handleUserList);
     }
 
-    const isSearchPage = location.pathname === '/userlist.php'
-        || (location.pathname === '/page.php' && params.get('sid') === 'UserList');
-    if (location.pathname === '/factions.php' || isSearchPage) {
-        watchProfileLinks();
-    }
-}
+    const start = () => {
+        mountPanel();
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
-} else {
-    start();
+        const xid = params.get('XID');
+        if (isProfile && xid) {
+            void showProfileStats(Number(xid));
+        }
+        if (isSearch) {
+            watchProfileLinks();
+        }
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
 }

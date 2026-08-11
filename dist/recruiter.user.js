@@ -1,12 +1,11 @@
 // ==UserScript==
 // @name         Torn Recruiter
 // @namespace    torn-recruiter
-// @version      0.1.16
+// @version      0.1.17
 // @description  Filters the Torn user search to recruitable players (donator/subscriber, not fedded/fallen) and shows hours played, xanax/day and activity streak.
 // @match        https://www.torn.com/page.php*
 // @match        https://www.torn.com/profiles.php*
 // @match        https://www.torn.com/userlist.php*
-// @match        https://www.torn.com/factions.php*
 // @run-at       document-start
 // @grant        none
 // @license      MIT
@@ -249,8 +248,6 @@
         a.recruiter-stats { margin: 0 8px; white-space: nowrap; color: inherit; text-decoration: none;
             font-size: 12px; line-height: 2; vertical-align: middle; display: inline-block; }
         a.recruiter-stats:hover { text-decoration: underline; }
-        a.recruiter-stats.member-cell { display: block; clear: both; font-size: 11px; line-height: 1.5;
-            margin: 0; padding: 0 10px 3px; }
         /* fixed-width column overlay on the user list's right edge; header and rows share widths */
         .users-list-title, .user-info-list-wrap > li { position: relative; }
         .recruiter-cols, a.recruiter-stats.recruiter-cols { position: absolute; right: 0; top: 0; bottom: 0;
@@ -441,16 +438,9 @@
         // matching the injected header; elsewhere (faction page) it stays inline after the name
         const row = target.closest('li, tr');
         const isUserList = !!row?.querySelector('.level-icons-wrap');
-        const memberCell = target.closest('.table-cell.member');
         if (isUserList && row) {
             cell.classList.add('recruiter-cols');
             row.appendChild(cell);
-        }
-        else if (memberCell) {
-            // faction member table: the name wrapper is a clipping flex box, so the cell
-            // goes on its own line at the bottom of the member cell
-            cell.classList.add('member-cell');
-            memberCell.appendChild(cell);
         }
         else {
             target.insertAdjacentElement('afterend', cell);
@@ -527,26 +517,32 @@
         scan();
     }
 
-    installInterceptor();
-    onUserList(handleUserList);
-    function start() {
-        mountPanel();
-        const params = new URLSearchParams(location.search);
-        const xid = params.get('XID');
-        if (location.pathname === '/profiles.php' && xid) {
-            void showProfileStats(Number(xid));
+    const params = new URLSearchParams(location.search);
+    const isProfile = location.pathname === '/profiles.php';
+    const isSearch = location.pathname === '/userlist.php'
+        || (location.pathname === '/page.php' && params.get('sid') === 'UserList');
+    // active only on profiles and the (advanced) search page — inert everywhere else
+    if (isProfile || isSearch) {
+        if (isSearch) {
+            installInterceptor();
+            onUserList(handleUserList);
         }
-        const isSearchPage = location.pathname === '/userlist.php'
-            || (location.pathname === '/page.php' && params.get('sid') === 'UserList');
-        if (location.pathname === '/factions.php' || isSearchPage) {
-            watchProfileLinks();
+        const start = () => {
+            mountPanel();
+            const xid = params.get('XID');
+            if (isProfile && xid) {
+                void showProfileStats(Number(xid));
+            }
+            if (isSearch) {
+                watchProfileLinks();
+            }
+        };
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', start);
         }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', start);
-    }
-    else {
-        start();
+        else {
+            start();
+        }
     }
 
 })();

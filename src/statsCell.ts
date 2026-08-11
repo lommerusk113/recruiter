@@ -41,15 +41,9 @@ export function attachStats(target: HTMLElement, userId: number): void {
     // matching the injected header; elsewhere (faction page) it stays inline after the name
     const row = target.closest<HTMLElement>('li, tr');
     const isUserList = !!row?.querySelector('.level-icons-wrap');
-    const memberCell = target.closest<HTMLElement>('.table-cell.member');
     if (isUserList && row) {
         cell.classList.add('recruiter-cols');
         row.appendChild(cell);
-    } else if (memberCell) {
-        // faction member table: the name wrapper is a clipping flex box, so the cell
-        // goes on its own line at the bottom of the member cell
-        cell.classList.add('member-cell');
-        memberCell.appendChild(cell);
     } else {
         target.insertAdjacentElement('afterend', cell);
     }
